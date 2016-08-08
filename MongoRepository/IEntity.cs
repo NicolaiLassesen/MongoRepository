@@ -1,7 +1,7 @@
+using MongoDB.Bson.Serialization.Attributes;
+
 namespace MongoRepository
 {
-    using MongoDB.Bson.Serialization.Attributes;
-
     /// <summary>
     /// Generic Entity interface.
     /// </summary>

@@ -1,13 +1,13 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using MongoDB.Driver;
-using MongoRepository;
-using MongoRepositoryTests.Entities;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using MongoDB.Driver;
+using MongoRepositoryTests.Entities;
 
-namespace MongoRepositoryTests
+namespace MongoRepository.Tests
 {
     //TODO: We REALLY need some decent tests and cleanup this mess.
 
@@ -30,14 +30,14 @@ namespace MongoRepositoryTests
         {
             var url = new MongoUrl(ConfigurationManager.ConnectionStrings["MongoServerSettings"].ConnectionString);
             var client = new MongoClient(url);
-            client.GetServer().DropDatabase(url.DatabaseName);
+            client.DropDatabase(url.DatabaseName);
         }
 
 
         [TestMethod]
-        public void AddAndUpdateTest()
+        public async Task AddAndUpdateTest()
         {
-            IRepository<Customer> _customerRepo = new MongoRepository<Customer>();
+            IRepository<Customer> customerRepo = new MongoRepository<Customer>();
             IRepositoryManager<Customer> _customerMan = new MongoRepositoryManager<Customer>();
 
             Assert.IsFalse(_customerMan.Exists);
@@ -47,8 +47,7 @@ namespace MongoRepositoryTests
             customer.LastName = "Dillon";
             customer.Phone = "0900999899";
             customer.Email = "Bob.dil@snailmail.com";
-            customer.HomeAddress = new Address
-            {
+            customer.HomeAddress = new Address {
                 Address1 = "North kingdom 15 west",
                 Address2 = "1 north way",
                 PostCode = "40990",
@@ -56,14 +55,14 @@ namespace MongoRepositoryTests
                 Country = "Alaska"
             };
 
-            _customerRepo.Add(customer);
+            customerRepo.Add(customer);
 
             Assert.IsTrue(_customerMan.Exists);
 
             Assert.IsNotNull(customer.Id);
 
             // fetch it back 
-            var alreadyAddedCustomer = _customerRepo.Where(c => c.FirstName == "Bob").Single();
+            var alreadyAddedCustomer = customerRepo.Where(c => c.FirstName == "Bob").Single();
 
             Assert.IsNotNull(alreadyAddedCustomer);
             Assert.AreEqual(customer.FirstName, alreadyAddedCustomer.FirstName);
@@ -72,16 +71,16 @@ namespace MongoRepositoryTests
             alreadyAddedCustomer.Phone = "10110111";
             alreadyAddedCustomer.Email = "dil.bob@fastmail.org";
 
-            _customerRepo.Update(alreadyAddedCustomer);
+            customerRepo.Update(alreadyAddedCustomer);
 
             // fetch by id now 
-            var updatedCustomer = _customerRepo.GetById(customer.Id);
+            var updatedCustomer = await customerRepo.GetById(customer.Id);
 
             Assert.IsNotNull(updatedCustomer);
             Assert.AreEqual(alreadyAddedCustomer.Phone, updatedCustomer.Phone);
             Assert.AreEqual(alreadyAddedCustomer.Email, updatedCustomer.Email);
 
-            Assert.IsTrue(_customerRepo.Exists(c => c.HomeAddress.Country == "Alaska"));
+            Assert.IsTrue(customerRepo.Exists(c => c.HomeAddress.Country == "Alaska"));
         }
 
         [TestMethod]
@@ -95,8 +94,7 @@ namespace MongoRepositoryTests
             customer.LastName = "Swaun";
             customer.Phone = "123 99 8767";
             customer.Email = "erick@mail.com";
-            customer.HomeAddress = new Address
-            {
+            customer.HomeAddress = new Address {
                 Address1 = "Main bulevard",
                 Address2 = "1 west way",
                 PostCode = "89560",
@@ -330,14 +328,19 @@ namespace MongoRepositoryTests
         #region Reproduce issue: https://mongorepository.codeplex.com/discussions/433878
         public abstract class BaseItem : IEntity
         {
-            public string Id { get; set; }
+            public string Id
+            {
+                get; set;
+            }
         }
 
         public abstract class BaseA : BaseItem
-        { }
+        {
+        }
 
         public class SpecialA : BaseA
-        { }
+        {
+        }
 
         [TestMethod]
         public void Discussion433878()
@@ -349,23 +352,32 @@ namespace MongoRepositoryTests
         #region Reproduce issue: https://mongorepository.codeplex.com/discussions/572382
         public abstract class ClassA : Entity
         {
-            public string Prop1 { get; set; }
+            public string Prop1
+            {
+                get; set;
+            }
         }
 
         public class ClassB : ClassA
         {
-            public string Prop2 { get; set; }
+            public string Prop2
+            {
+                get; set;
+            }
         }
 
         public class ClassC : ClassA
         {
-            public string Prop3 { get; set; }
+            public string Prop3
+            {
+                get; set;
+            }
         }
 
         [TestMethod]
         public void Discussion572382()
         {
-            var repo = new MongoRepository<ClassA>() { 
+            var repo = new MongoRepository<ClassA>() {
                 new ClassB() { Prop1 = "A", Prop2 = "B" } ,
                 new ClassC() { Prop1 = "A", Prop3 = "C" }
             };

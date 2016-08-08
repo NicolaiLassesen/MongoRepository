@@ -1,11 +1,9 @@
-﻿using MongoRepository;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace MongoRepositoryTests
+namespace MongoRepository.Tests
 {
-    
-    
+
+
     /// <summary>
     ///This is a test class for MongoRepositoryManagerTest and is intended
     ///to contain all MongoRepositoryManagerTest Unit Tests
@@ -23,17 +21,12 @@ namespace MongoRepositoryTests
         ///</summary>
         public TestContext TestContext
         {
-            get
-            {
-                return testContextInstance;
-            }
-            set
-            {
-                testContextInstance = value;
-            }
+            get { return testContextInstance; }
+            set { testContextInstance = value; }
         }
 
         #region Additional test attributes
+
         // 
         //You can use the following additional attributes as you write your tests:
         //
@@ -61,9 +54,7 @@ namespace MongoRepositoryTests
         //{
         //}
         //
+
         #endregion
-
-
-
     }
 }

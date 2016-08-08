@@ -1,18 +1,18 @@
-﻿namespace MongoRepository
-{
-    using MongoDB.Driver;
-    using System;
-    using System.Configuration;
+﻿using MongoDB.Driver;
+using System;
+using System.Configuration;
 
+namespace MongoRepository
+{
     /// <summary>
     /// Internal miscellaneous utility functions.
     /// </summary>
-    internal static class Util<U>
+    internal static class Util<TKey>
     {
         /// <summary>
         /// The default key MongoRepository will look for in the App.config or Web.config file.
         /// </summary>
-        private const string DefaultConnectionstringName = "MongoServerSettings";
+        private const string DEFAULT_CONNECTIONSTRING_NAME = "MongoServerSettings";
 
         /// <summary>
         /// Retrieves the default connectionstring from the App.config or Web.config file.
@@ -20,7 +20,17 @@
         /// <returns>Returns the default connectionstring from the App.config or Web.config file.</returns>
         public static string GetDefaultConnectionString()
         {
-            return ConfigurationManager.ConnectionStrings[DefaultConnectionstringName].ConnectionString;
+            return ConfigurationManager.ConnectionStrings[DEFAULT_CONNECTIONSTRING_NAME].ConnectionString;
+        }
+
+        /// <summary>
+        /// Creates and returns a MongoDatabase from the specified url.
+        /// </summary>
+        /// <param name="connectionString">The connectionstring to use to get the database from.</param>
+        /// <returns>Returns a MongoDatabase from the specified url.</returns>
+        public static IMongoDatabase GetDatabaseFromConnectionString(string connectionString)
+        {
+            return GetDatabaseFromUrl(new MongoUrl(connectionString));
         }
 
         /// <summary>
@@ -28,81 +38,75 @@
         /// </summary>
         /// <param name="url">The url to use to get the database from.</param>
         /// <returns>Returns a MongoDatabase from the specified url.</returns>
-        private static MongoDatabase GetDatabaseFromUrl(MongoUrl url)
+        public static IMongoDatabase GetDatabaseFromUrl(MongoUrl url)
         {
             var client = new MongoClient(url);
-            var server = client.GetServer();
-            return server.GetDatabase(url.DatabaseName); // WriteConcern defaulted to Acknowledged
+            return client.GetDatabase(url.DatabaseName); // WriteConcern defaulted to Acknowledged
         }
 
         /// <summary>
         /// Creates and returns a MongoCollection from the specified type and connectionstring.
         /// </summary>
-        /// <typeparam name="T">The type to get the collection of.</typeparam>
+        /// <typeparam name="TEntity">The type to get the collection of.</typeparam>
         /// <param name="connectionString">The connectionstring to use to get the collection from.</param>
         /// <returns>Returns a MongoCollection from the specified type and connectionstring.</returns>
-        public static MongoCollection<T> GetCollectionFromConnectionString<T>(string connectionString)
-            where T : IEntity<U>
+        public static IMongoCollection<TEntity> GetCollectionFromConnectionString<TEntity>(string connectionString)
+            where TEntity : IEntity<TKey>
         {
-            return Util<U>.GetCollectionFromConnectionString<T>(connectionString, GetCollectionName<T>());
+            return GetCollectionFromConnectionString<TEntity>(connectionString, GetCollectionName<TEntity>());
         }
 
         /// <summary>
         /// Creates and returns a MongoCollection from the specified type and connectionstring.
         /// </summary>
-        /// <typeparam name="T">The type to get the collection of.</typeparam>
+        /// <typeparam name="TEntity">The type to get the collection of.</typeparam>
         /// <param name="connectionString">The connectionstring to use to get the collection from.</param>
         /// <param name="collectionName">The name of the collection to use.</param>
         /// <returns>Returns a MongoCollection from the specified type and connectionstring.</returns>
-        public static MongoCollection<T> GetCollectionFromConnectionString<T>(string connectionString, string collectionName)
-            where T : IEntity<U>
+        public static IMongoCollection<TEntity> GetCollectionFromConnectionString<TEntity>(string connectionString,
+                                                                                           string collectionName)
+            where TEntity : IEntity<TKey>
         {
-            return Util<U>.GetDatabaseFromUrl(new MongoUrl(connectionString))
-                .GetCollection<T>(collectionName);
+            return GetDatabaseFromUrl(new MongoUrl(connectionString))
+                .GetCollection<TEntity>(collectionName);
         }
 
         /// <summary>
         /// Creates and returns a MongoCollection from the specified type and url.
         /// </summary>
-        /// <typeparam name="T">The type to get the collection of.</typeparam>
+        /// <typeparam name="TEntity">The type to get the collection of.</typeparam>
         /// <param name="url">The url to use to get the collection from.</param>
         /// <returns>Returns a MongoCollection from the specified type and url.</returns>
-        public static MongoCollection<T> GetCollectionFromUrl<T>(MongoUrl url)
-            where T : IEntity<U>
+        public static IMongoCollection<TEntity> GetCollectionFromUrl<TEntity>(MongoUrl url)
+            where TEntity : IEntity<TKey>
         {
-            return Util<U>.GetCollectionFromUrl<T>(url, GetCollectionName<T>());
+            return GetCollectionFromUrl<TEntity>(url, GetCollectionName<TEntity>());
         }
 
         /// <summary>
         /// Creates and returns a MongoCollection from the specified type and url.
         /// </summary>
-        /// <typeparam name="T">The type to get the collection of.</typeparam>
+        /// <typeparam name="TEntity">The type to get the collection of.</typeparam>
         /// <param name="url">The url to use to get the collection from.</param>
         /// <param name="collectionName">The name of the collection to use.</param>
         /// <returns>Returns a MongoCollection from the specified type and url.</returns>
-        public static MongoCollection<T> GetCollectionFromUrl<T>(MongoUrl url, string collectionName)
-            where T : IEntity<U>
+        public static IMongoCollection<TEntity> GetCollectionFromUrl<TEntity>(MongoUrl url, string collectionName)
+            where TEntity : IEntity<TKey>
         {
-            return Util<U>.GetDatabaseFromUrl(url)
-                .GetCollection<T>(collectionName);
+            return GetDatabaseFromUrl(url)
+                .GetCollection<TEntity>(collectionName);
         }
 
         /// <summary>
         /// Determines the collectionname for T and assures it is not empty
         /// </summary>
-        /// <typeparam name="T">The type to determine the collectionname for.</typeparam>
+        /// <typeparam name="TEntity">The type to determine the collectionname for.</typeparam>
         /// <returns>Returns the collectionname for T.</returns>
-        private static string GetCollectionName<T>() where T : IEntity<U>
+        private static string GetCollectionName<TEntity>() where TEntity : IEntity<TKey>
         {
-            string collectionName;
-            if (typeof(T).BaseType.Equals(typeof(object)))
-            {
-                collectionName = GetCollectioNameFromInterface<T>();
-            }
-            else
-            {
-                collectionName = GetCollectionNameFromType(typeof(T));
-            }
+            string collectionName = typeof(TEntity).BaseType == typeof(object)
+                ? GetCollectioNameFromInterface<TEntity>()
+                : GetCollectionNameFromType(typeof(TEntity));
 
             if (string.IsNullOrEmpty(collectionName))
             {
@@ -114,23 +118,13 @@
         /// <summary>
         /// Determines the collectionname from the specified type.
         /// </summary>
-        /// <typeparam name="T">The type to get the collectionname from.</typeparam>
+        /// <typeparam name="TEntity">The type to get the collectionname from.</typeparam>
         /// <returns>Returns the collectionname from the specified type.</returns>
-        private static string GetCollectioNameFromInterface<T>()
+        private static string GetCollectioNameFromInterface<TEntity>()
         {
-            string collectionname;
-
             // Check to see if the object (inherited from Entity) has a CollectionName attribute
-            var att = Attribute.GetCustomAttribute(typeof(T), typeof(CollectionName));
-            if (att != null)
-            {
-                // It does! Return the value specified by the CollectionName attribute
-                collectionname = ((CollectionName)att).Name;
-            }
-            else
-            {
-                collectionname = typeof(T).Name;
-            }
+            var att = Attribute.GetCustomAttribute(typeof(TEntity), typeof(CollectionName));
+            string collectionname = att != null ? ((CollectionName)att).Name : typeof(TEntity).Name;
 
             return collectionname;
         }
@@ -142,29 +136,24 @@
         /// <returns>Returns the collectionname from the specified type.</returns>
         private static string GetCollectionNameFromType(Type entitytype)
         {
-            string collectionname;
+            if (entitytype == null)
+                throw new ArgumentNullException(nameof(entitytype));
 
             // Check to see if the object (inherited from Entity) has a CollectionName attribute
             var att = Attribute.GetCustomAttribute(entitytype, typeof(CollectionName));
-            if (att != null)
-            {
-                // It does! Return the value specified by the CollectionName attribute
-                collectionname = ((CollectionName)att).Name;
-            }
-            else
-            {
-                if (typeof(Entity).IsAssignableFrom(entitytype))
-                {
-                    // No attribute found, get the basetype
-                    while (!entitytype.BaseType.Equals(typeof(Entity)))
-                    {
-                        entitytype = entitytype.BaseType;
-                    }
-                }
-                collectionname = entitytype.Name;
-            }
+            string collectionname = att != null ? ((CollectionName)att).Name : GetBaseEntity(entitytype).Name;
 
             return collectionname;
+        }
+
+        private static Type GetBaseEntity(Type entitytype)
+        {
+            if (!typeof(Entity).IsAssignableFrom(entitytype))
+                return entitytype;
+            if (entitytype.BaseType == typeof(Entity))
+                return entitytype;
+            // No attribute found, get the basetype
+            return GetBaseEntity(entitytype.BaseType);
         }
     }
 }

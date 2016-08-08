@@ -1,27 +1,24 @@
-﻿namespace MongoRepository
-{
-    using MongoDB.Bson;
-    using MongoDB.Driver;
-    using MongoDB.Driver.Builders;
-    using MongoDB.Driver.Linq;
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Linq.Expressions;
+﻿using MongoDB.Bson;
+using MongoDB.Driver;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Threading.Tasks;
 
+// ReSharper disable once CheckNamespace
+
+namespace MongoRepository
+{
     /// <summary>
     /// Deals with entities in MongoDb.
     /// </summary>
-    /// <typeparam name="T">The type contained in the repository.</typeparam>
+    /// <typeparam name="TEntity">The type contained in the repository.</typeparam>
     /// <typeparam name="TKey">The type used for the entity's Id.</typeparam>
-    public class MongoRepository<T, TKey> : IRepository<T, TKey>
-        where T : IEntity<TKey>
+    public class MongoRepository<TEntity, TKey> : IRepository<TEntity, TKey>
+        where TEntity : IEntity<TKey>
+        where TKey : IEquatable<TKey>
     {
-        /// <summary>
-        /// MongoCollection field.
-        /// </summary>
-        protected internal MongoCollection<T> collection;
-
         /// <summary>
         /// Initializes a new instance of the MongoRepository class.
         /// Uses the Default App/Web.Config connectionstrings to fetch the connectionString and Database name.
@@ -38,7 +35,7 @@
         /// <param name="connectionString">Connectionstring to use for connecting to MongoDB.</param>
         public MongoRepository(string connectionString)
         {
-            this.collection = Util<TKey>.GetCollectionFromConnectionString<T>(connectionString);
+            Collection = Util<TKey>.GetCollectionFromConnectionString<TEntity>(connectionString);
         }
 
         /// <summary>
@@ -48,7 +45,7 @@
         /// <param name="collectionName">The name of the collection to use.</param>
         public MongoRepository(string connectionString, string collectionName)
         {
-            this.collection = Util<TKey>.GetCollectionFromConnectionString<T>(connectionString, collectionName);
+            Collection = Util<TKey>.GetCollectionFromConnectionString<TEntity>(connectionString, collectionName);
         }
 
         /// <summary>
@@ -57,7 +54,7 @@
         /// <param name="url">Url to use for connecting to MongoDB.</param>
         public MongoRepository(MongoUrl url)
         {
-            this.collection = Util<TKey>.GetCollectionFromUrl<T>(url);
+            Collection = Util<TKey>.GetCollectionFromUrl<TEntity>(url);
         }
 
         /// <summary>
@@ -67,7 +64,7 @@
         /// <param name="collectionName">The name of the collection to use.</param>
         public MongoRepository(MongoUrl url, string collectionName)
         {
-            this.collection = Util<TKey>.GetCollectionFromUrl<T>(url, collectionName);
+            Collection = Util<TKey>.GetCollectionFromUrl<TEntity>(url, collectionName);
         }
 
         /// <summary>
@@ -79,53 +76,48 @@
         /// for most purposes you can use the MongoRepositoryManager&lt;T&gt;
         /// </remarks>
         /// <value>The Mongo collection (to perform advanced operations).</value>
-        public MongoCollection<T> Collection
-        {
-            get { return this.collection; }
-        }
+        public IMongoCollection<TEntity> Collection { get; }
 
         /// <summary>
         /// Gets the name of the collection
         /// </summary>
-        public string CollectionName
-        {
-            get { return this.collection.Name; }
-        }
+        public string CollectionName => Collection.CollectionNamespace.CollectionName;
 
         /// <summary>
-        /// Returns the T by its given id.
+        /// Returns the entity by its given id.
         /// </summary>
         /// <param name="id">The Id of the entity to retrieve.</param>
-        /// <returns>The Entity T.</returns>
-        public virtual T GetById(TKey id)
+        /// <returns>The entity.</returns>
+        public virtual async Task<TEntity> GetById(TKey id)
         {
-            if (typeof(T).IsSubclassOf(typeof(Entity)))
-            {
-                return this.GetById(new ObjectId(id as string));
-            }
-
-            return this.collection.FindOneByIdAs<T>(BsonValue.Create(id));
+            //if (typeof(TEntity).IsSubclassOf(typeof(Entity)))
+            //{
+            //    return await GetById(new ObjectId(id as string));
+            //}
+            var filter = Builders<TEntity>.Filter.Eq(f => f.Id, id);
+            return await Collection.Find(filter).FirstOrDefaultAsync();
         }
 
-        /// <summary>
-        /// Returns the T by its given id.
-        /// </summary>
-        /// <param name="id">The Id of the entity to retrieve.</param>
-        /// <returns>The Entity T.</returns>
-        public virtual T GetById(ObjectId id)
-        {
-            return this.collection.FindOneByIdAs<T>(id);
-        }
+        ///// <summary>
+        ///// Returns the entity by its object id.
+        ///// </summary>
+        ///// <param name="id">The Id of the entity to retrieve.</param>
+        ///// <returns>The Entity T.</returns>
+        //public virtual async Task<TEntity> GetById(ObjectId id)
+        //{
+        //    var filter = Builders<Entity>.Filter.Eq(f => f.Id, id);
+        //    var entity = await collection.FindOneByIdAs<TEntity>(id);
+        //}
 
         /// <summary>
         /// Adds the new entity in the repository.
         /// </summary>
         /// <param name="entity">The entity T.</param>
         /// <returns>The added entity including its new ObjectId.</returns>
-        public virtual T Add(T entity)
+        public virtual async Task<TEntity> Add(TEntity entity)
         {
-            this.collection.Insert<T>(entity);
-
+            await Collection.InsertOneAsync(entity);
+            // TODO: Did the entity get updated with an ID?
             return entity;
         }
 
@@ -133,9 +125,9 @@
         /// Adds the new entities in the repository.
         /// </summary>
         /// <param name="entities">The entities of type T.</param>
-        public virtual void Add(IEnumerable<T> entities)
+        public virtual async Task Add(IEnumerable<TEntity> entities)
         {
-            this.collection.InsertBatch<T>(entities);
+            await Collection.InsertManyAsync(entities);
         }
 
         /// <summary>
@@ -143,10 +135,10 @@
         /// </summary>
         /// <param name="entity">The entity.</param>
         /// <returns>The updated entity.</returns>
-        public virtual T Update(T entity)
+        public virtual async Task<TEntity> Update(TEntity entity)
         {
-            this.collection.Save<T>(entity);
-
+            var filter = Builders<TEntity>.Filter.Eq(f => f.Id, entity.Id);
+            await Collection.ReplaceOneAsync(filter, entity);
             return entity;
         }
 
@@ -154,11 +146,12 @@
         /// Upserts the entities.
         /// </summary>
         /// <param name="entities">The entities to update.</param>
-        public virtual void Update(IEnumerable<T> entities)
+        public virtual async Task Update(IEnumerable<TEntity> entities)
         {
-            foreach (T entity in entities)
+            foreach (TEntity entity in entities)
             {
-                this.collection.Save<T>(entity);
+                var filter = Builders<TEntity>.Filter.Eq(f => f.Id, entity.Id);
+                await Collection.ReplaceOneAsync(filter, entity);
             }
         }
 
@@ -166,63 +159,75 @@
         /// Deletes an entity from the repository by its id.
         /// </summary>
         /// <param name="id">The entity's id.</param>
-        public virtual void Delete(TKey id)
+        public virtual async Task Delete(TKey id)
         {
-            if (typeof(T).IsSubclassOf(typeof(Entity)))
-            {
-                this.collection.Remove(Query.EQ("_id", new ObjectId(id as string)));
-            }
-            else
-            {
-                this.collection.Remove(Query.EQ("_id", BsonValue.Create(id)));
-            }
+            var filter = Builders<TEntity>.Filter.Eq(f => f.Id, id);
+            await Collection.DeleteOneAsync(filter);
+            //if (typeof(TEntity).IsSubclassOf(typeof(Entity)))
+            //{
+            //    collection.Remove(Query.EQ("_id", new ObjectId(id as string)));
+            //}
+            //else
+            //{
+            //    collection.Remove(Query.EQ("_id", BsonValue.Create(id)));
+            //}
         }
 
-        /// <summary>
-        /// Deletes an entity from the repository by its ObjectId.
-        /// </summary>
-        /// <param name="id">The ObjectId of the entity.</param>
-        public virtual void Delete(ObjectId id)
-        {
-            this.collection.Remove(Query.EQ("_id", id));
-        }
+        ///// <summary>
+        ///// Deletes an entity from the repository by its ObjectId.
+        ///// </summary>
+        ///// <param name="id">The ObjectId of the entity.</param>
+        //public virtual void Delete(ObjectId id)
+        //{
+        //    collection.Remove(Query.EQ("_id", id));
+        //}
 
         /// <summary>
         /// Deletes the given entity.
         /// </summary>
         /// <param name="entity">The entity to delete.</param>
-        public virtual void Delete(T entity)
+        public virtual async Task Delete(TEntity entity)
         {
-            this.Delete(entity.Id);
+            var filter = Builders<TEntity>.Filter.Eq(f => f.Id, entity.Id);
+            await Collection.DeleteOneAsync(filter);
         }
 
         /// <summary>
         /// Deletes the entities matching the predicate.
         /// </summary>
         /// <param name="predicate">The expression.</param>
-        public virtual void Delete(Expression<Func<T, bool>> predicate)
+        public virtual async Task Delete(Expression<Func<TEntity, bool>> predicate)
         {
-            foreach (T entity in this.collection.AsQueryable<T>().Where(predicate))
-            {
-                this.Delete(entity.Id);
-            }
+            var filter = Builders<TEntity>.Filter.Where(predicate);
+            await Collection.DeleteManyAsync(filter);
         }
 
         /// <summary>
         /// Deletes all entities in the repository.
         /// </summary>
-        public virtual void DeleteAll()
+        public virtual async Task DeleteAll()
         {
-            this.collection.RemoveAll();
+            await Collection.DeleteManyAsync(new BsonDocument());
         }
 
         /// <summary>
         /// Counts the total entities in the repository.
         /// </summary>
         /// <returns>Count of entities in the collection.</returns>
-        public virtual long Count()
+        public virtual async Task<long> Count()
         {
-            return this.collection.Count();
+            return await Collection.CountAsync(new BsonDocument());
+        }
+
+        /// <summary>
+        /// Counts the entities matching the predicate.
+        /// </summary>
+        /// <param name="predicate">The expression.</param>
+        /// <returns>Count of entities in the repository.</returns>
+        public virtual async Task<long> Count(Expression<Func<TEntity, bool>> predicate)
+        {
+            var filter = Builders<TEntity>.Filter.Where(predicate);
+            return await Collection.CountAsync(filter);
         }
 
         /// <summary>
@@ -230,64 +235,21 @@
         /// </summary>
         /// <param name="predicate">The expression.</param>
         /// <returns>True when an entity matching the predicate exists, false otherwise.</returns>
-        public virtual bool Exists(Expression<Func<T, bool>> predicate)
+        public virtual async Task<bool> Exists(Expression<Func<TEntity, bool>> predicate)
         {
-            return this.collection.AsQueryable<T>().Any(predicate);
-        }
-
-        /// <summary>
-        /// Lets the server know that this thread is about to begin a series of related operations that must all occur
-        /// on the same connection. The return value of this method implements IDisposable and can be placed in a using
-        /// statement (in which case RequestDone will be called automatically when leaving the using statement). 
-        /// </summary>
-        /// <returns>A helper object that implements IDisposable and calls RequestDone() from the Dispose method.</returns>
-        /// <remarks>
-        ///     <para>
-        ///         Sometimes a series of operations needs to be performed on the same connection in order to guarantee correct
-        ///         results. This is rarely the case, and most of the time there is no need to call RequestStart/RequestDone.
-        ///         An example of when this might be necessary is when a series of Inserts are called in rapid succession with
-        ///         SafeMode off, and you want to query that data in a consistent manner immediately thereafter (with SafeMode
-        ///         off the writes can queue up at the server and might not be immediately visible to other connections). Using
-        ///         RequestStart you can force a query to be on the same connection as the writes, so the query won't execute
-        ///         until the server has caught up with the writes.
-        ///     </para>
-        ///     <para>
-        ///         A thread can temporarily reserve a connection from the connection pool by using RequestStart and
-        ///         RequestDone. You are free to use any other databases as well during the request. RequestStart increments a
-        ///         counter (for this thread) and RequestDone decrements the counter. The connection that was reserved is not
-        ///         actually returned to the connection pool until the count reaches zero again. This means that calls to
-        ///         RequestStart/RequestDone can be nested and the right thing will happen.
-        ///     </para>
-        ///     <para>
-        ///         Use the connectionstring to specify the readpreference; add "readPreference=X" where X is one of the following
-        ///         values: primary, primaryPreferred, secondary, secondaryPreferred, nearest.
-        ///         See http://docs.mongodb.org/manual/applications/replication/#read-preference
-        ///     </para>
-        /// </remarks>
-        public virtual IDisposable RequestStart()
-        {
-            return this.collection.Database.RequestStart();
-        }
-
-        /// <summary>
-        /// Lets the server know that this thread is done with a series of related operations.
-        /// </summary>
-        /// <remarks>
-        /// Instead of calling this method it is better to put the return value of RequestStart in a using statement.
-        /// </remarks>
-        public virtual void RequestDone()
-        {
-            this.collection.Database.RequestDone();
+            var filter = Builders<TEntity>.Filter.Where(predicate);
+            return await Collection.Find(filter).Limit(1).AnyAsync();
         }
 
         #region IQueryable<T>
+
         /// <summary>
         /// Returns an enumerator that iterates through a collection.
         /// </summary>
         /// <returns>An IEnumerator&lt;T&gt; object that can be used to iterate through the collection.</returns>
-        public virtual IEnumerator<T> GetEnumerator()
+        public virtual IEnumerator<TEntity> GetEnumerator()
         {
-            return this.collection.AsQueryable<T>().GetEnumerator();
+            return Collection.AsQueryable().GetEnumerator();
         }
 
         /// <summary>
@@ -296,32 +258,24 @@
         /// <returns>An IEnumerator object that can be used to iterate through the collection.</returns>
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
         {
-            return this.collection.AsQueryable<T>().GetEnumerator();
+            return Collection.AsQueryable().GetEnumerator();
         }
 
         /// <summary>
         /// Gets the type of the element(s) that are returned when the expression tree associated with this instance of IQueryable is executed.
         /// </summary>
-        public virtual Type ElementType
-        {
-            get { return this.collection.AsQueryable<T>().ElementType; }
-        }
+        public virtual Type ElementType => Collection.AsQueryable().ElementType;
 
         /// <summary>
         /// Gets the expression tree that is associated with the instance of IQueryable.
         /// </summary>
-        public virtual Expression Expression
-        {
-            get { return this.collection.AsQueryable<T>().Expression; }
-        }
+        public virtual Expression Expression => Collection.AsQueryable().Expression;
 
         /// <summary>
         /// Gets the query provider that is associated with this data source.
         /// </summary>
-        public virtual IQueryProvider Provider
-        {
-            get { return this.collection.AsQueryable<T>().Provider; }
-        }
+        public virtual IQueryProvider Provider => Collection.AsQueryable().Provider;
+
         #endregion
     }
 
@@ -339,14 +293,17 @@
         /// </summary>
         /// <remarks>Default constructor defaults to "MongoServerSettings" key for connectionstring.</remarks>
         public MongoRepository()
-            : base() { }
+        {
+        }
 
         /// <summary>
         /// Initializes a new instance of the MongoRepository class.
         /// </summary>
         /// <param name="url">Url to use for connecting to MongoDB.</param>
         public MongoRepository(MongoUrl url)
-            : base(url) { }
+            : base(url)
+        {
+        }
 
         /// <summary>
         /// Initializes a new instance of the MongoRepository class.
@@ -354,14 +311,18 @@
         /// <param name="url">Url to use for connecting to MongoDB.</param>
         /// <param name="collectionName">The name of the collection to use.</param>
         public MongoRepository(MongoUrl url, string collectionName)
-            : base(url, collectionName) { }
+            : base(url, collectionName)
+        {
+        }
 
         /// <summary>
         /// Initializes a new instance of the MongoRepository class.
         /// </summary>
         /// <param name="connectionString">Connectionstring to use for connecting to MongoDB.</param>
         public MongoRepository(string connectionString)
-            : base(connectionString) { }
+            : base(connectionString)
+        {
+        }
 
         /// <summary>
         /// Initializes a new instance of the MongoRepository class.
@@ -369,6 +330,8 @@
         /// <param name="connectionString">Connectionstring to use for connecting to MongoDB.</param>
         /// <param name="collectionName">The name of the collection to use.</param>
         public MongoRepository(string connectionString, string collectionName)
-            : base(connectionString, collectionName) { }
+            : base(connectionString, collectionName)
+        {
+        }
     }
 }

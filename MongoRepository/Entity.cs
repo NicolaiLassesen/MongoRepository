@@ -1,10 +1,10 @@
-﻿namespace MongoRepository
-{
-    using MongoDB.Bson;
-    using MongoDB.Bson.Serialization.Attributes;
-    using System;
-    using System.Runtime.Serialization;
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+using System;
+using System.Runtime.Serialization;
 
+namespace MongoRepository
+{
     /// <summary>
     /// Abstract Entity for all the BusinessEntities.
     /// </summary>
