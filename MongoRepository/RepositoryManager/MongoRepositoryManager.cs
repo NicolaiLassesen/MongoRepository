@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -77,7 +75,7 @@ namespace MongoRepository
         /// <summary>
         /// Drops the collection.
         /// </summary>
-        public virtual async Task Drop()
+        public virtual async Task DropAsync()
         {
             await Database.DropCollectionAsync(Name);
         }
@@ -311,7 +309,6 @@ namespace MongoRepository
         /// </summary>
         /// <remarks>Default constructor defaults to "MongoServerSettings" key for connectionstring.</remarks>
         public MongoRepositoryManager()
-            : base()
         {
         }
 

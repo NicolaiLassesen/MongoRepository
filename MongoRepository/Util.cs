@@ -1,6 +1,6 @@
-﻿using MongoDB.Driver;
-using System;
+﻿using System;
 using System.Configuration;
+using MongoDB.Driver;
 
 namespace MongoRepository
 {

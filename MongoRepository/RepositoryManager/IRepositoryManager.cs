@@ -33,7 +33,7 @@ namespace MongoRepository
         /// <summary>
         /// Drops the repository.
         /// </summary>
-        Task Drop();
+        Task DropAsync();
 
         /// <summary>
         /// Drops specified index on the repository.

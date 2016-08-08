@@ -1,5 +1,4 @@
-﻿using System;
-using MongoRepository;
+﻿using MongoRepository;
 
 namespace MongoRepositoryTests.Entities
 {
@@ -8,10 +7,6 @@ namespace MongoRepositoryTests.Entities
     /// </summary>
     public class Product : Entity
     {
-        public Product()
-        {
-        }
-
         public string Name { get; set; }
 
         public string Description { get; set; }

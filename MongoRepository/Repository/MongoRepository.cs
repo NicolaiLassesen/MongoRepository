@@ -1,10 +1,12 @@
-﻿using MongoDB.Bson;
-using MongoDB.Driver;
-using System;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading;
 using System.Threading.Tasks;
+using MongoDB.Bson;
+using MongoDB.Driver;
 
 // ReSharper disable once CheckNamespace
 
@@ -68,56 +70,31 @@ namespace MongoRepository
         }
 
         /// <summary>
-        /// Gets the Mongo collection (to perform advanced operations).
-        /// </summary>
-        /// <remarks>
-        /// One can argue that exposing this property (and with that, access to it's Database property for instance
-        /// (which is a "parent")) is not the responsibility of this class. Use of this property is highly discouraged;
-        /// for most purposes you can use the MongoRepositoryManager&lt;T&gt;
-        /// </remarks>
-        /// <value>The Mongo collection (to perform advanced operations).</value>
-        public IMongoCollection<TEntity> Collection { get; }
-
-        /// <summary>
         /// Gets the name of the collection
         /// </summary>
-        public string CollectionName => Collection.CollectionNamespace.CollectionName;
+        public string RepositoryName => Collection.CollectionNamespace.CollectionName;
 
         /// <summary>
         /// Returns the entity by its given id.
         /// </summary>
         /// <param name="id">The Id of the entity to retrieve.</param>
+        /// <param name="cancellationToken"></param>
         /// <returns>The entity.</returns>
-        public virtual async Task<TEntity> GetById(TKey id)
+        public virtual async Task<TEntity> GetByIdAsync(TKey id,
+                                                        CancellationToken cancellationToken = default(CancellationToken))
         {
-            //if (typeof(TEntity).IsSubclassOf(typeof(Entity)))
-            //{
-            //    return await GetById(new ObjectId(id as string));
-            //}
             var filter = Builders<TEntity>.Filter.Eq(f => f.Id, id);
-            return await Collection.Find(filter).FirstOrDefaultAsync();
+            return await Collection.Find(filter).FirstOrDefaultAsync(cancellationToken: cancellationToken);
         }
-
-        ///// <summary>
-        ///// Returns the entity by its object id.
-        ///// </summary>
-        ///// <param name="id">The Id of the entity to retrieve.</param>
-        ///// <returns>The Entity T.</returns>
-        //public virtual async Task<TEntity> GetById(ObjectId id)
-        //{
-        //    var filter = Builders<Entity>.Filter.Eq(f => f.Id, id);
-        //    var entity = await collection.FindOneByIdAs<TEntity>(id);
-        //}
 
         /// <summary>
         /// Adds the new entity in the repository.
         /// </summary>
-        /// <param name="entity">The entity T.</param>
+        /// <param name="entity">The entity to add.</param>
         /// <returns>The added entity including its new ObjectId.</returns>
-        public virtual async Task<TEntity> Add(TEntity entity)
+        public TEntity Add(TEntity entity)
         {
-            await Collection.InsertOneAsync(entity);
-            // TODO: Did the entity get updated with an ID?
+            Collection.InsertOne(entity);
             return entity;
         }
 
@@ -125,20 +102,46 @@ namespace MongoRepository
         /// Adds the new entities in the repository.
         /// </summary>
         /// <param name="entities">The entities of type T.</param>
-        public virtual async Task Add(IEnumerable<TEntity> entities)
+        public void Add(IEnumerable<TEntity> entities)
         {
-            await Collection.InsertManyAsync(entities);
+            Collection.InsertMany(entities);
+        }
+
+        /// <summary>
+        /// Adds the new entity in the repository.
+        /// </summary>
+        /// <param name="entity">The entity T.</param>
+        /// <param name="cancellationToken"></param>
+        /// <returns>The added entity including its new ObjectId.</returns>
+        public virtual async Task<TEntity> AddAsync(TEntity entity,
+                                                    CancellationToken cancellationToken = default(CancellationToken))
+        {
+            await Collection.InsertOneAsync(entity, cancellationToken: cancellationToken);
+            return entity;
+        }
+
+        /// <summary>
+        /// Adds the new entities in the repository.
+        /// </summary>
+        /// <param name="entities">The entities of type T.</param>
+        /// <param name="cancellationToken"></param>
+        public virtual async Task AddAsync(IEnumerable<TEntity> entities,
+                                           CancellationToken cancellationToken = default(CancellationToken))
+        {
+            await Collection.InsertManyAsync(entities, cancellationToken: cancellationToken);
         }
 
         /// <summary>
         /// Upserts an entity.
         /// </summary>
         /// <param name="entity">The entity.</param>
+        /// <param name="cancellationToken"></param>
         /// <returns>The updated entity.</returns>
-        public virtual async Task<TEntity> Update(TEntity entity)
+        public virtual async Task<TEntity> UpdateAsync(TEntity entity,
+                                                       CancellationToken cancellationToken = default(CancellationToken))
         {
             var filter = Builders<TEntity>.Filter.Eq(f => f.Id, entity.Id);
-            await Collection.ReplaceOneAsync(filter, entity);
+            await Collection.ReplaceOneAsync(filter, entity, new UpdateOptions {IsUpsert = true}, cancellationToken);
             return entity;
         }
 
@@ -146,12 +149,14 @@ namespace MongoRepository
         /// Upserts the entities.
         /// </summary>
         /// <param name="entities">The entities to update.</param>
-        public virtual async Task Update(IEnumerable<TEntity> entities)
+        /// <param name="cancellationToken"></param>
+        public virtual async Task UpdateAsync(IEnumerable<TEntity> entities,
+                                              CancellationToken cancellationToken = default(CancellationToken))
         {
             foreach (TEntity entity in entities)
             {
                 var filter = Builders<TEntity>.Filter.Eq(f => f.Id, entity.Id);
-                await Collection.ReplaceOneAsync(filter, entity);
+                await Collection.ReplaceOneAsync(filter, entity, new UpdateOptions {IsUpsert = true}, cancellationToken);
             }
         }
 
@@ -159,86 +164,80 @@ namespace MongoRepository
         /// Deletes an entity from the repository by its id.
         /// </summary>
         /// <param name="id">The entity's id.</param>
-        public virtual async Task Delete(TKey id)
+        /// <param name="cancellationToken"></param>
+        public virtual async Task DeleteAsync(TKey id, CancellationToken cancellationToken = default(CancellationToken))
         {
             var filter = Builders<TEntity>.Filter.Eq(f => f.Id, id);
-            await Collection.DeleteOneAsync(filter);
-            //if (typeof(TEntity).IsSubclassOf(typeof(Entity)))
-            //{
-            //    collection.Remove(Query.EQ("_id", new ObjectId(id as string)));
-            //}
-            //else
-            //{
-            //    collection.Remove(Query.EQ("_id", BsonValue.Create(id)));
-            //}
+            await Collection.DeleteOneAsync(filter, cancellationToken);
         }
-
-        ///// <summary>
-        ///// Deletes an entity from the repository by its ObjectId.
-        ///// </summary>
-        ///// <param name="id">The ObjectId of the entity.</param>
-        //public virtual void Delete(ObjectId id)
-        //{
-        //    collection.Remove(Query.EQ("_id", id));
-        //}
 
         /// <summary>
         /// Deletes the given entity.
         /// </summary>
         /// <param name="entity">The entity to delete.</param>
-        public virtual async Task Delete(TEntity entity)
+        /// <param name="cancellationToken"></param>
+        public virtual async Task DeleteAsync(TEntity entity,
+                                              CancellationToken cancellationToken = default(CancellationToken))
         {
             var filter = Builders<TEntity>.Filter.Eq(f => f.Id, entity.Id);
-            await Collection.DeleteOneAsync(filter);
+            await Collection.DeleteOneAsync(filter, cancellationToken);
         }
 
         /// <summary>
         /// Deletes the entities matching the predicate.
         /// </summary>
         /// <param name="predicate">The expression.</param>
-        public virtual async Task Delete(Expression<Func<TEntity, bool>> predicate)
+        /// <param name="cancellationToken"></param>
+        public virtual async Task DeleteAsync(Expression<Func<TEntity, bool>> predicate,
+                                              CancellationToken cancellationToken = default(CancellationToken))
         {
             var filter = Builders<TEntity>.Filter.Where(predicate);
-            await Collection.DeleteManyAsync(filter);
+            await Collection.DeleteManyAsync(filter, cancellationToken);
         }
 
         /// <summary>
         /// Deletes all entities in the repository.
         /// </summary>
-        public virtual async Task DeleteAll()
+        /// <param name="cancellationToken"></param>
+        public virtual async Task DeleteAllAsync(CancellationToken cancellationToken = default(CancellationToken))
         {
-            await Collection.DeleteManyAsync(new BsonDocument());
+            await Collection.DeleteManyAsync(new BsonDocument(), cancellationToken);
         }
 
         /// <summary>
         /// Counts the total entities in the repository.
         /// </summary>
+        /// <param name="cancellationToken"></param>
         /// <returns>Count of entities in the collection.</returns>
-        public virtual async Task<long> Count()
+        public virtual async Task<long> CountAsync(CancellationToken cancellationToken = default(CancellationToken))
         {
-            return await Collection.CountAsync(new BsonDocument());
+            return await Collection.CountAsync(new BsonDocument(), cancellationToken: cancellationToken);
         }
 
         /// <summary>
         /// Counts the entities matching the predicate.
         /// </summary>
         /// <param name="predicate">The expression.</param>
+        /// <param name="cancellationToken"></param>
         /// <returns>Count of entities in the repository.</returns>
-        public virtual async Task<long> Count(Expression<Func<TEntity, bool>> predicate)
+        public virtual async Task<long> CountAsync(Expression<Func<TEntity, bool>> predicate,
+                                                   CancellationToken cancellationToken = default(CancellationToken))
         {
             var filter = Builders<TEntity>.Filter.Where(predicate);
-            return await Collection.CountAsync(filter);
+            return await Collection.CountAsync(filter, cancellationToken: cancellationToken);
         }
 
         /// <summary>
         /// Checks if the entity exists for given predicate.
         /// </summary>
         /// <param name="predicate">The expression.</param>
+        /// <param name="cancellationToken"></param>
         /// <returns>True when an entity matching the predicate exists, false otherwise.</returns>
-        public virtual async Task<bool> Exists(Expression<Func<TEntity, bool>> predicate)
+        public virtual async Task<bool> ExistsAsync(Expression<Func<TEntity, bool>> predicate,
+                                                    CancellationToken cancellationToken = default(CancellationToken))
         {
             var filter = Builders<TEntity>.Filter.Where(predicate);
-            return await Collection.Find(filter).Limit(1).AnyAsync();
+            return await Collection.Find(filter).Limit(1).AnyAsync(cancellationToken: cancellationToken);
         }
 
         #region IQueryable<T>
@@ -256,7 +255,7 @@ namespace MongoRepository
         /// Returns an enumerator that iterates through a collection.
         /// </summary>
         /// <returns>An IEnumerator object that can be used to iterate through the collection.</returns>
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        IEnumerator IEnumerable.GetEnumerator()
         {
             return Collection.AsQueryable().GetEnumerator();
         }
@@ -277,6 +276,12 @@ namespace MongoRepository
         public virtual IQueryProvider Provider => Collection.AsQueryable().Provider;
 
         #endregion
+
+        /// <summary>
+        /// Gets the Mongo collection (to perform advanced operations).
+        /// </summary>
+        /// <value>The Mongo collection (to perform advanced operations).</value>
+        protected IMongoCollection<TEntity> Collection { get; }
     }
 
     /// <summary>

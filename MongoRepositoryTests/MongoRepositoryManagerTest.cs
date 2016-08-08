@@ -8,11 +8,9 @@ namespace MongoRepository.Tests
     ///This is a test class for MongoRepositoryManagerTest and is intended
     ///to contain all MongoRepositoryManagerTest Unit Tests
     ///</summary>
-    [TestClass()]
+    [TestClass]
     public class MongoRepositoryManagerTest
     {
-
-
         private TestContext testContextInstance;
 
         /// <summary>

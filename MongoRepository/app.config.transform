@@ -3,6 +3,6 @@
   <connectionStrings>
     <!-- See http://www.mongodb.org/display/DOCS/CSharp+Driver+Tutorial#CSharpDriverTutorial-Connectionstrings for more info -->
     <add name="MongoServerSettings"
-         connectionString="mongodb://localhost/MyDatabase" />
+         connectionString="mongodb://localhost:27017" />
   </connectionStrings>
 </configuration>

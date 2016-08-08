@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using MongoRepository;
 using MongoDB.Bson.Serialization.Attributes;
+using MongoRepository;
 
 namespace MongoRepositoryTests.Entities
 {
@@ -11,11 +11,7 @@ namespace MongoRepositoryTests.Entities
     [CollectionName("CustomersTest")]
     public class Customer : Entity
     {
-       public Customer()
-       {           
-       }
-
-       [BsonElement("fname")]
+        [BsonElement("fname")]
        public string FirstName { get; set; }
 
        [BsonElement("lname")]

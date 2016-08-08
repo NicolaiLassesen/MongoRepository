@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading;
 using System.Threading.Tasks;
-using MongoDB.Driver;
 
 // ReSharper disable once CheckNamespace
 
@@ -19,91 +19,113 @@ namespace MongoRepository
         where TKey : IEquatable<TKey>
     {
         /// <summary>
-        /// Gets the Mongo collection (to perform advanced operations).
+        /// Gets the name of the repository
         /// </summary>
-        /// <remarks>
-        /// One can argue that exposing this property (and with that, access to it's Database property for instance
-        /// (which is a "parent")) is not the responsibility of this class. Use of this property is highly discouraged;
-        /// for most purposes you can use the MongoRepositoryManager&lt;T&gt;
-        /// </remarks>
-        /// <value>The Mongo collection (to perform advanced operations).</value>
-        IMongoCollection<TEntity> Collection { get; }
+        string RepositoryName { get; }
 
         /// <summary>
-        /// Returns the T by its given id.
+        /// Returns the entity by its given id.
         /// </summary>
         /// <param name="id">The value representing the ObjectId of the entity to retrieve.</param>
-        /// <returns>The Entity T.</returns>
-        Task<TEntity> GetById(TKey id);
+        /// <param name="cancellationToken"></param>
+        /// <returns>The Entity</returns>
+        Task<TEntity> GetByIdAsync(TKey id, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Adds the new entity in the repository.
         /// </summary>
         /// <param name="entity">The entity to add.</param>
         /// <returns>The added entity including its new ObjectId.</returns>
-        Task<TEntity> Add(TEntity entity);
+        TEntity Add(TEntity entity);
 
         /// <summary>
         /// Adds the new entities in the repository.
         /// </summary>
         /// <param name="entities">The entities of type T.</param>
-        Task Add(IEnumerable<TEntity> entities);
+        void Add(IEnumerable<TEntity> entities);
+
+        /// <summary>
+        /// Adds the new entity in the repository.
+        /// </summary>
+        /// <param name="entity">The entity to add.</param>
+        /// <param name="cancellationToken"></param>
+        /// <returns>The added entity including its new ObjectId.</returns>
+        Task<TEntity> AddAsync(TEntity entity, CancellationToken cancellationToken = default(CancellationToken));
+
+        /// <summary>
+        /// Adds the new entities in the repository.
+        /// </summary>
+        /// <param name="entities">The entities of type T.</param>
+        /// <param name="cancellationToken"></param>
+        Task AddAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Upserts an entity.
         /// </summary>
         /// <param name="entity">The entity.</param>
+        /// <param name="cancellationToken"></param>
         /// <returns>The updated entity.</returns>
-        Task<TEntity> Update(TEntity entity);
+        Task<TEntity> UpdateAsync(TEntity entity, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Upserts the entities.
         /// </summary>
         /// <param name="entities">The entities to update.</param>
-        Task Update(IEnumerable<TEntity> entities);
+        /// <param name="cancellationToken"></param>
+        Task UpdateAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Deletes an entity from the repository by its id.
         /// </summary>
         /// <param name="id">The entity's id.</param>
-        Task Delete(TKey id);
+        /// <param name="cancellationToken"></param>
+        Task DeleteAsync(TKey id, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Deletes the given entity.
         /// </summary>
         /// <param name="entity">The entity to delete.</param>
-        Task Delete(TEntity entity);
+        /// <param name="cancellationToken"></param>
+        Task DeleteAsync(TEntity entity, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Deletes the entities matching the predicate.
         /// </summary>
         /// <param name="predicate">The expression.</param>
-        Task Delete(Expression<Func<TEntity, bool>> predicate);
+        /// <param name="cancellationToken"></param>
+        Task DeleteAsync(Expression<Func<TEntity, bool>> predicate,
+                         CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Deletes all entities in the repository.
         /// </summary>
-        Task DeleteAll();
+        /// <param name="cancellationToken"></param>
+        Task DeleteAllAsync(CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Counts the total entities in the repository.
         /// </summary>
+        /// <param name="cancellationToken"></param>
         /// <returns>Count of entities in the repository.</returns>
-        Task<long> Count();
+        Task<long> CountAsync(CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Counts the entities matching the predicate.
         /// </summary>
         /// <param name="predicate">The expression.</param>
+        /// <param name="cancellationToken"></param>
         /// <returns>Count of entities in the repository.</returns>
-        Task<long> Count(Expression<Func<TEntity, bool>> predicate);
+        Task<long> CountAsync(Expression<Func<TEntity, bool>> predicate,
+                              CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Checks if the entity exists for given predicate.
         /// </summary>
         /// <param name="predicate">The expression.</param>
+        /// <param name="cancellationToken"></param>
         /// <returns>True when an entity matching the predicate exists, false otherwise.</returns>
-        Task<bool> Exists(Expression<Func<TEntity, bool>> predicate);
+        Task<bool> ExistsAsync(Expression<Func<TEntity, bool>> predicate,
+                               CancellationToken cancellationToken = default(CancellationToken));
     }
 
     /// <summary>
