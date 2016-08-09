@@ -236,8 +236,9 @@ namespace MongoRepository
         public virtual async Task<bool> ExistsAsync(Expression<Func<TEntity, bool>> predicate,
                                                     CancellationToken cancellationToken = default(CancellationToken))
         {
-            var filter = Builders<TEntity>.Filter.Where(predicate);
-            return await Collection.Find(filter).Limit(1).AnyAsync(cancellationToken: cancellationToken);
+            //var filter = Builders<TEntity>.Filter.Where(predicate);
+            var test = await Collection.Find(predicate).Limit(1).ToListAsync();
+            return test.Any();
         }
 
         #region IQueryable<T>

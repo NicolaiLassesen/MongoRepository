@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using MongoDB.Driver;
 using MongoRepositoryTests.Entities;
 using Should;
 using Xbehave;
@@ -13,23 +10,22 @@ namespace MongoRepository.Tests
 {
     public class RepositoryTests
     {
-        private void DropDB()
+        [Scenario]
+        public void SomeStrangeTest()
         {
-            var url = new MongoUrl(ConfigurationManager.ConnectionStrings["MongoServerSettings"].ConnectionString);
-            var client = new MongoClient(url);
-            client.DropDatabase(url.DatabaseName);
         }
-
 
         [Scenario]
         public void AddAndUpdateTest(IRepository<Customer> customers,
                                      IRepositoryManager<Customer> customersManager,
-                                     Customer customer, Customer fetchedCustomer, Customer updatedCustomer)
+                                     Customer customer,
+                                     Customer fetchedCustomer,
+                                     Customer updatedCustomer)
         {
             "Given a clean test database, a new MongoRepository, and a MongoRepositoryManager".
                 f(() =>
                 {
-                    DropDB();
+                    MongoTestUtils.DropDb();
                     customers = new MongoRepository<Customer>();
                     customersManager = new MongoRepositoryManager<Customer>();
                 });
@@ -67,13 +63,11 @@ namespace MongoRepository.Tests
                 f(async () => (await customers.ExistsAsync(c => c.HomeAddress.Country == "Alaska")).ShouldBeTrue());
 
             "When the customer is fetched back from the repository".
-                f(() => {
-                            fetchedCustomer = customers.Single(c => c.FirstName == "Bob");
-                });
+                f(() => fetchedCustomer = customers.Single(c => c.FirstName == "Bob"));
             "Then it should have been retrieved".
                 f(() => fetchedCustomer.ShouldNotBeNull());
             "Then its properties should match".
-                f((() =>
+                f(() =>
                 {
                     fetchedCustomer.Id.ShouldEqual(customer.Id);
                     fetchedCustomer.FirstName.ShouldEqual(customer.FirstName);
@@ -85,7 +79,7 @@ namespace MongoRepository.Tests
                     fetchedCustomer.HomeAddress.PostCode.ShouldEqual(customer.HomeAddress.PostCode);
                     fetchedCustomer.HomeAddress.City.ShouldEqual(customer.HomeAddress.City);
                     fetchedCustomer.HomeAddress.Country.ShouldEqual(customer.HomeAddress.Country);
-                }));
+                });
 
             "When updating properties of the fetched customer".
                 f(async () =>
@@ -103,12 +97,13 @@ namespace MongoRepository.Tests
                     updatedCustomer.Phone.ShouldEqual(fetchedCustomer.Phone);
                     updatedCustomer.Email.ShouldEqual(fetchedCustomer.Email);
                 });
-            DropDB();
+            MongoTestUtils.DropDb();
         }
 
         [Scenario]
         public async Task ComplexEntityTest()
         {
+            MongoTestUtils.DropDb();
             IRepository<Customer> customerRepo = new MongoRepository<Customer>();
             IRepository<Product> productRepo = new MongoRepository<Product>();
 
@@ -144,24 +139,24 @@ namespace MongoRepository.Tests
 
             await customerRepo.AddAsync(customer);
 
-            Assert.IsNotNull(customer.Id);
-            Assert.IsNotNull(customer.Orders[0].Items[0].Product.Id);
+            customer.Id.ShouldNotBeNull();
+            customer.Orders[0].Items[0].Product.Id.ShouldNotBeNull();
 
             // get the orders  
             var theOrders = customerRepo.Where(c => c.Id == customer.Id).Select(c => c.Orders).ToList();
             var theOrderItems = theOrders[0].Select(o => o.Items);
 
-            Assert.IsNotNull(theOrders);
-            Assert.IsNotNull(theOrderItems);
+            theOrders.ShouldNotBeNull();
+            theOrderItems.ShouldNotBeNull();
 
-            DropDB();
+            MongoTestUtils.DropDb();
         }
 
 
         [Scenario]
         public async Task BatchTest()
         {
-            DropDB();
+            MongoTestUtils.DropDb();
 
             IRepository<Customer> customerRepo = new MongoRepository<Customer>();
             var custlist = new List<Customer>(new[]
@@ -179,9 +174,10 @@ namespace MongoRepository.Tests
             await customerRepo.AddAsync(custlist);
 
             var count = await customerRepo.CountAsync();
-            Assert.AreEqual(7, count);
+            count.ShouldEqual(7);
+            string notExpectedValue = new string('0', 24);
             foreach (Customer c in custlist)
-                Assert.AreNotEqual(new string('0', 24), c.Id);
+                c.Id.ShouldNotEqual(notExpectedValue);
 
             //Update batch
             foreach (Customer c in custlist)
@@ -189,13 +185,13 @@ namespace MongoRepository.Tests
             await customerRepo.UpdateAsync(custlist);
 
             foreach (Customer c in customerRepo)
-                Assert.AreEqual(c.FirstName, c.LastName);
+                c.FirstName.ShouldEqual(c.LastName);
 
             //Delete by criteria
             await customerRepo.DeleteAsync(f => f.FirstName.StartsWith("Client"));
 
             count = await customerRepo.CountAsync();
-            Assert.AreEqual(4, count);
+            count.ShouldEqual(4);
 
             //Delete specific object
             await customerRepo.DeleteAsync(custlist[0]);
@@ -205,50 +201,57 @@ namespace MongoRepository.Tests
                                     where cust.LastName.EndsWith("C") || cust.LastName.EndsWith("G")
                                     select cust;
 
-            Assert.AreEqual(2, selectedcustomers.ToList().Count);
+            selectedcustomers.ToList().Count.ShouldEqual(2);
 
             count = await customerRepo.CountAsync();
-            Assert.AreEqual(3, count);
+            count.ShouldEqual(3);
 
             //Drop entire repo
             await new MongoRepositoryManager<Customer>().DropAsync();
 
             count = await customerRepo.CountAsync();
-            Assert.AreEqual(0, count);
+            count.ShouldEqual(0);
+
+            MongoTestUtils.DropDb();
         }
 
         [Scenario]
         public async Task CollectionNamesTest()
         {
+            MongoTestUtils.DropDb();
+
             var a = new MongoRepository<Animal>();
             var am = new MongoRepositoryManager<Animal>();
             var va = new Dog();
-            Assert.IsFalse(am.Exists);
+            am.Exists.ShouldBeFalse();
             await a.UpdateAsync(va);
-            Assert.IsTrue(am.Exists);
-            Assert.IsInstanceOfType(await a.GetByIdAsync(va.Id), typeof(Dog));
-            Assert.AreEqual(am.Name, "AnimalsTest");
-            Assert.AreEqual(a.RepositoryName, "AnimalsTest");
+            am.Exists.ShouldBeTrue();
+            var animal = await a.GetByIdAsync(va.Id);
+            animal.ShouldBeType<Dog>();
+            am.Name.ShouldEqual("AnimalsTest");
+            a.RepositoryName.ShouldEqual("AnimalsTest");
 
             var cl = new MongoRepository<CatLike>();
             var clm = new MongoRepositoryManager<CatLike>();
             var vcl = new Lion();
-            Assert.IsFalse(clm.Exists);
+            clm.Exists.ShouldBeFalse();
             await cl.UpdateAsync(vcl);
-            Assert.IsTrue(clm.Exists);
-            Assert.IsInstanceOfType(await cl.GetByIdAsync(vcl.Id), typeof(Lion));
-            Assert.AreEqual(clm.Name, "Catlikes");
-            Assert.AreEqual(cl.RepositoryName, "Catlikes");
+            clm.Exists.ShouldBeTrue();
+            var catLike = await cl.GetByIdAsync(vcl.Id);
+            catLike.ShouldBeType<Lion>();
+            clm.Name.ShouldEqual("Catlikes");
+            cl.RepositoryName.ShouldEqual("Catlikes");
 
             var b = new MongoRepository<Bird>();
             var bm = new MongoRepositoryManager<Bird>();
             var vb = new Bird();
-            Assert.IsFalse(bm.Exists);
+            bm.Exists.ShouldBeFalse();
             await b.UpdateAsync(vb);
-            Assert.IsTrue(bm.Exists);
-            Assert.IsInstanceOfType(await b.GetByIdAsync(vb.Id), typeof(Bird));
-            Assert.AreEqual(bm.Name, "Birds");
-            Assert.AreEqual(b.RepositoryName, "Birds");
+            bm.Exists.ShouldBeTrue();
+            var bird = await b.GetByIdAsync(vb.Id);
+            bird.ShouldBeType<Bird>();
+            bm.Name.ShouldEqual("Birds");
+            b.RepositoryName.ShouldEqual("Birds");
 
             var l = new MongoRepository<Lion>();
             var lm = new MongoRepositoryManager<Lion>();
@@ -256,10 +259,11 @@ namespace MongoRepository.Tests
 
             //Assert.IsFalse(lm.Exists);   //Should already exist (created by cl)
             await l.UpdateAsync(vl);
-            Assert.IsTrue(lm.Exists);
-            Assert.IsInstanceOfType(await l.GetByIdAsync(vl.Id), typeof(Lion));
-            Assert.AreEqual(lm.Name, "Catlikes");
-            Assert.AreEqual(l.RepositoryName, "Catlikes");
+            lm.Exists.ShouldBeTrue();
+            var lion = await l.GetByIdAsync(vl.Id);
+            lion.ShouldBeType<Lion>();
+            lm.Name.ShouldEqual("Catlikes");
+            l.RepositoryName.ShouldEqual("Catlikes");
 
             var d = new MongoRepository<Dog>();
             var dm = new MongoRepositoryManager<Dog>();
@@ -267,10 +271,11 @@ namespace MongoRepository.Tests
 
             //Assert.IsFalse(dm.Exists);
             await d.UpdateAsync(vd);
-            Assert.IsTrue(dm.Exists);
-            Assert.IsInstanceOfType(await d.GetByIdAsync(vd.Id), typeof(Dog));
-            Assert.AreEqual(dm.Name, "AnimalsTest");
-            Assert.AreEqual(d.RepositoryName, "AnimalsTest");
+            dm.Exists.ShouldBeTrue();
+            var dog = await d.GetByIdAsync(vd.Id);
+            dog.ShouldBeType<Dog>();
+            dm.Name.ShouldEqual("AnimalsTest");
+            d.RepositoryName.ShouldEqual("AnimalsTest");
 
             var m = new MongoRepository<Bird>();
             var mm = new MongoRepositoryManager<Bird>();
@@ -278,78 +283,95 @@ namespace MongoRepository.Tests
 
             //Assert.IsFalse(mm.Exists);
             await m.UpdateAsync(vm);
-            Assert.IsTrue(mm.Exists);
-            Assert.IsInstanceOfType(await m.GetByIdAsync(vm.Id), typeof(Macaw));
-            Assert.AreEqual(mm.Name, "Birds");
-            Assert.AreEqual(m.RepositoryName, "Birds");
+            mm.Exists.ShouldBeTrue();
+            var macaw = await m.GetByIdAsync(vm.Id);
+            macaw.ShouldBeType<Macaw>();
+            mm.Name.ShouldEqual("Birds");
+            m.RepositoryName.ShouldEqual("Birds");
 
             var w = new MongoRepository<Whale>();
             var wm = new MongoRepositoryManager<Whale>();
             var vw = new Whale();
-            Assert.IsFalse(wm.Exists);
+            wm.Exists.ShouldBeFalse();
             await w.UpdateAsync(vw);
-            Assert.IsTrue(wm.Exists);
-            Assert.IsInstanceOfType(await w.GetByIdAsync(vw.Id), typeof(Whale));
-            Assert.AreEqual(wm.Name, "Whale");
-            Assert.AreEqual(w.RepositoryName, "Whale");
+            wm.Exists.ShouldBeTrue();
+            var whale = await w.GetByIdAsync(vw.Id);
+            whale.ShouldBeType<Whale>();
+            wm.Name.ShouldEqual("Whale");
+            w.RepositoryName.ShouldEqual("Whale");
+
+            MongoTestUtils.DropDb();
         }
 
         [Scenario]
         public async Task CustomIdTest()
         {
+            MongoTestUtils.DropDb();
+
             var x = new MongoRepository<CustomIDEntity>();
             var xm = new MongoRepositoryManager<CustomIDEntity>();
 
             await x.AddAsync(new CustomIDEntity {Id = "aaa"});
 
-            Assert.IsTrue(xm.Exists);
-            Assert.IsInstanceOfType(await x.GetByIdAsync("aaa"), typeof(CustomIDEntity));
-
-            Assert.AreEqual("aaa", (await x.GetByIdAsync("aaa")).Id);
+            xm.Exists.ShouldBeTrue();
+            var aaa = await x.GetByIdAsync("aaa");
+            aaa.ShouldBeType<CustomIDEntity>();
+            aaa.Id.ShouldEqual("aaa");
 
             await x.DeleteAsync("aaa");
-            Assert.AreEqual(0, await x.CountAsync());
+            0L.ShouldEqual(await x.CountAsync());
 
             var y = new MongoRepository<CustomIDEntityCustomCollection>();
             var ym = new MongoRepositoryManager<CustomIDEntityCustomCollection>();
 
             await y.AddAsync(new CustomIDEntityCustomCollection {Id = "xyz"});
 
-            Assert.IsTrue(ym.Exists);
-            Assert.AreEqual(ym.Name, "MyTestCollection");
-            Assert.AreEqual(y.RepositoryName, "MyTestCollection");
-            Assert.IsInstanceOfType(await y.GetByIdAsync("xyz"), typeof(CustomIDEntityCustomCollection));
+            ym.Exists.ShouldBeTrue();
+            ym.Name.ShouldEqual("MyTestCollection");
+            y.RepositoryName.ShouldEqual("MyTestCollection");
+            var xyz = await y.GetByIdAsync("xyz");
+            xyz.ShouldBeType<CustomIDEntityCustomCollection>();
 
             await y.DeleteAsync("xyz");
-            Assert.AreEqual(0, await y.CountAsync());
+            0L.ShouldEqual(await y.CountAsync());
+
+            MongoTestUtils.DropDb();
         }
 
         [Scenario]
         public async Task CustomIdTypeTest()
         {
+            MongoTestUtils.DropDb();
+
             var xint = new MongoRepository<IntCustomer, int>();
             await xint.AddAsync(new IntCustomer {Id = 1, Name = "Test A"});
             await xint.AddAsync(new IntCustomer {Id = 2, Name = "Test B"});
 
             var yint = await xint.GetByIdAsync(2);
-            Assert.AreEqual(yint.Name, "Test B");
+            yint.Name.ShouldEqual("Test B");
 
             await xint.DeleteAsync(2);
-            Assert.AreEqual(1, await xint.CountAsync());
+            1L.ShouldEqual(await xint.CountAsync());
+
+            MongoTestUtils.DropDb();
         }
 
         [Scenario]
         public async Task OverrideCollectionName()
         {
+            MongoTestUtils.DropDb();
+
             IRepository<Customer> customerRepo =
                 new MongoRepository<Customer>("mongodb://localhost/MongoRepositoryTests", "TestCustomers123");
             await customerRepo.AddAsync(new Customer {FirstName = "Test"});
-            Assert.IsTrue(customerRepo.Single().FirstName.Equals("Test"));
-            Assert.AreEqual("TestCustomers123", customerRepo.RepositoryName);
+            customerRepo.Single().FirstName.ShouldEqual("Test");
+            customerRepo.RepositoryName.ShouldEqual("TestCustomers123");
 
-            IRepositoryManager<Customer> curstomerRepoManager =
+            IRepositoryManager<Customer> customerRepoManager =
                 new MongoRepositoryManager<Customer>("mongodb://localhost/MongoRepositoryTests", "TestCustomers123");
-            Assert.AreEqual("TestCustomers123", curstomerRepoManager.Name);
+            customerRepoManager.Name.ShouldEqual("TestCustomers123");
+
+            MongoTestUtils.DropDb();
         }
 
         #region Reproduce issue: https://mongorepository.codeplex.com/discussions/433878
@@ -370,8 +392,12 @@ namespace MongoRepository.Tests
         [Scenario]
         public void Discussion433878()
         {
+            MongoTestUtils.DropDb();
+
             var specialRepository = new MongoRepository<SpecialA>();
-            Assert.IsTrue(specialRepository != null);
+            specialRepository.ShouldNotBeNull();
+
+            MongoTestUtils.DropDb();
         }
 
         #endregion
@@ -396,17 +422,22 @@ namespace MongoRepository.Tests
         [Scenario]
         public async Task Discussion572382()
         {
+            MongoTestUtils.DropDb();
+
             var repo = new MongoRepository<ClassA>
             {
                 new ClassB {Prop1 = "A", Prop2 = "B"},
                 new ClassC {Prop1 = "A", Prop3 = "C"}
             };
 
-            Assert.AreEqual(2, await repo.CountAsync());
+            long count = await repo.CountAsync();
+            count.ShouldEqual(2);
 
-            Assert.AreEqual(2, repo.OfType<ClassA>().Count());
-            Assert.AreEqual(1, repo.OfType<ClassB>().Count());
-            Assert.AreEqual(1, repo.OfType<ClassC>().Count());
+            repo.OfType<ClassA>().Count().ShouldEqual(2);
+            repo.OfType<ClassB>().Count().ShouldEqual(1);
+            repo.OfType<ClassC>().Count().ShouldEqual(1);
+
+            MongoTestUtils.DropDb();
         }
 
         #endregion
