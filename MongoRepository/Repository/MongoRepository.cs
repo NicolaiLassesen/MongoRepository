@@ -6,6 +6,8 @@ using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.Options;
 using MongoDB.Driver;
 
 // ReSharper disable once CheckNamespace
@@ -338,6 +340,32 @@ namespace MongoRepository
         public MongoRepository(string connectionString, string collectionName)
             : base(connectionString, collectionName)
         {
+        }
+    }
+
+    public static class MongoRepository
+    {
+        public static BsonMemberMap SetDictionarySerializer(this BsonMemberMap memberMap,
+                                                            DictionaryRepresentation representation)
+        {
+            var serializer = ConfigureSerializer(memberMap.GetSerializer(), representation);
+            return memberMap.SetSerializer(serializer);
+        }
+
+        private static IBsonSerializer ConfigureSerializer(IBsonSerializer serializer,
+                                                           DictionaryRepresentation representation)
+        {
+            var dictionaryRepresentationConfigurable = serializer as IDictionaryRepresentationConfigurable;
+            if (dictionaryRepresentationConfigurable != null)
+            {
+                serializer = dictionaryRepresentationConfigurable.WithDictionaryRepresentation(representation);
+            }
+
+            var childSerializerConfigurable = serializer as IChildSerializerConfigurable;
+            return childSerializerConfigurable == null
+                ? serializer
+                : childSerializerConfigurable.WithChildSerializer(
+                    ConfigureSerializer(childSerializerConfigurable.ChildSerializer, representation));
         }
     }
 }
