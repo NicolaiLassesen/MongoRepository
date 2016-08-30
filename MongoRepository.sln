@@ -10,18 +10,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoRepository.Tests", "Mo
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{D62DDBAF-08C6-4130-890A-888910785B65}"
 	ProjectSection(SolutionItems) = preProject
-		buildnugetpackage.cmd = buildnugetpackage.cmd
 		LICENSE = LICENSE
-		MongoRepository.nuspec = MongoRepository.nuspec
-		mongorepositorylogo.png = mongorepositorylogo.png
-		README.md = README.md
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{288E6547-DDFC-459F-8BF8-5225F06085FC}"
-	ProjectSection(SolutionItems) = preProject
-		.nuget\NuGet.Config = .nuget\NuGet.Config
-		.nuget\NuGet.exe = .nuget\NuGet.exe
-		.nuget\NuGet.targets = .nuget\NuGet.targets
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoRepository", "MongoRepository\MongoRepository.csproj", "{CE75B2FE-C027-42F6-8D00-E44CC38BE7C7}"
