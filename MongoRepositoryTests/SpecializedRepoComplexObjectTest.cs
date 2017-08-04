@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using MongoDB.Driver;
@@ -47,6 +48,11 @@ namespace MongoRepository.Tests
 
         public class TestEntityRepository : MongoRepository<TestEntityWrapper>
         {
+            public TestEntityRepository(string userName, SecureString password)
+                : base(userName, password)
+            {
+            }
+
             public async Task<bool> Property1ValueExists(string value,
                                                          CancellationToken cancellationToken =
                                                              default(CancellationToken))

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using MongoDB.Bson;
@@ -28,8 +29,10 @@ namespace MongoRepository
         /// Uses the Default App/Web.Config connectionstrings to fetch the connectionString and Database name.
         /// </summary>
         /// <remarks>Default constructor defaults to "MongoServerSettings" key for connectionstring.</remarks>
-        public MongoRepository()
-            : this(Util<TKey>.GetDefaultConnectionString())
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
+        public MongoRepository(string username, SecureString password)
+            : this(Util<TKey>.GetDefaultConnectionString(), username, password)
         {
         }
 
@@ -37,9 +40,11 @@ namespace MongoRepository
         /// Initializes a new instance of the MongoRepository class.
         /// </summary>
         /// <param name="connectionString">Connectionstring to use for connecting to MongoDB.</param>
-        public MongoRepository(string connectionString)
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
+        public MongoRepository(string connectionString, string username, SecureString password)
         {
-            Collection = Util<TKey>.GetCollectionFromConnectionString<TEntity>(connectionString);
+            Collection = Util<TKey>.GetCollectionFromConnectionString<TEntity>(connectionString, username, password);
         }
 
         /// <summary>
@@ -47,18 +52,25 @@ namespace MongoRepository
         /// </summary>
         /// <param name="connectionString">Connectionstring to use for connecting to MongoDB.</param>
         /// <param name="collectionName">The name of the collection to use.</param>
-        public MongoRepository(string connectionString, string collectionName)
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
+        public MongoRepository(string connectionString, string collectionName, string username, SecureString password)
         {
-            Collection = Util<TKey>.GetCollectionFromConnectionString<TEntity>(connectionString, collectionName);
+            Collection = Util<TKey>.GetCollectionFromConnectionString<TEntity>(connectionString,
+                                                                               collectionName,
+                                                                               username,
+                                                                               password);
         }
 
         /// <summary>
         /// Initializes a new instance of the MongoRepository class.
         /// </summary>
         /// <param name="url">Url to use for connecting to MongoDB.</param>
-        public MongoRepository(MongoUrl url)
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
+        public MongoRepository(MongoUrl url, string username, SecureString password)
         {
-            Collection = Util<TKey>.GetCollectionFromUrl<TEntity>(url);
+            Collection = Util<TKey>.GetCollectionFromUrl<TEntity>(url, username, password);
         }
 
         /// <summary>
@@ -66,9 +78,11 @@ namespace MongoRepository
         /// </summary>
         /// <param name="url">Url to use for connecting to MongoDB.</param>
         /// <param name="collectionName">The name of the collection to use.</param>
-        public MongoRepository(MongoUrl url, string collectionName)
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
+        public MongoRepository(MongoUrl url, string collectionName, string username, SecureString password)
         {
-            Collection = Util<TKey>.GetCollectionFromUrl<TEntity>(url, collectionName);
+            Collection = Util<TKey>.GetCollectionFromUrl<TEntity>(url, collectionName, username, password);
         }
 
         /// <summary>
@@ -300,7 +314,10 @@ namespace MongoRepository
         /// Uses the Default App/Web.Config connectionstrings to fetch the connectionString and Database name.
         /// </summary>
         /// <remarks>Default constructor defaults to "MongoServerSettings" key for connectionstring.</remarks>
-        public MongoRepository()
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
+        public MongoRepository(string username, SecureString password)
+            : base(username, password)
         {
         }
 
@@ -308,8 +325,10 @@ namespace MongoRepository
         /// Initializes a new instance of the MongoRepository class.
         /// </summary>
         /// <param name="url">Url to use for connecting to MongoDB.</param>
-        public MongoRepository(MongoUrl url)
-            : base(url)
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
+        public MongoRepository(MongoUrl url, string username, SecureString password)
+            : base(url, username, password)
         {
         }
 
@@ -318,8 +337,10 @@ namespace MongoRepository
         /// </summary>
         /// <param name="url">Url to use for connecting to MongoDB.</param>
         /// <param name="collectionName">The name of the collection to use.</param>
-        public MongoRepository(MongoUrl url, string collectionName)
-            : base(url, collectionName)
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
+        public MongoRepository(MongoUrl url, string collectionName, string username, SecureString password)
+            : base(url, collectionName, username, password)
         {
         }
 
@@ -327,8 +348,10 @@ namespace MongoRepository
         /// Initializes a new instance of the MongoRepository class.
         /// </summary>
         /// <param name="connectionString">Connectionstring to use for connecting to MongoDB.</param>
-        public MongoRepository(string connectionString)
-            : base(connectionString)
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
+        public MongoRepository(string connectionString, string username, SecureString password)
+            : base(connectionString, username, password)
         {
         }
 
@@ -337,8 +360,10 @@ namespace MongoRepository
         /// </summary>
         /// <param name="connectionString">Connectionstring to use for connecting to MongoDB.</param>
         /// <param name="collectionName">The name of the collection to use.</param>
-        public MongoRepository(string connectionString, string collectionName)
-            : base(connectionString, collectionName)
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
+        public MongoRepository(string connectionString, string collectionName, string username, SecureString password)
+            : base(connectionString, collectionName, username, password)
         {
         }
     }
