@@ -182,3 +182,4 @@ UpgradeLog*.htm
 # Microsoft Fakes
 FakesAssemblies/
 Help/Output/*
+/.vs/MongoRepository/v15/sqlite3

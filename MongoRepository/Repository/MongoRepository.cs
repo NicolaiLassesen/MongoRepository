@@ -28,7 +28,8 @@ namespace MongoRepository
         static MongoRepository()
         {
             // DeSerialize DateTime as local format (not utc) - the Json representation will still be ISODate
-            BsonSerializer.RegisterSerializer(typeof(DateTime), DateTimeSerializer.LocalInstance);
+            if (BsonSerializer.LookupSerializer<DateTime>() == null)
+                BsonSerializer.RegisterSerializer(typeof(DateTime), DateTimeSerializer.LocalInstance);
         }
 
         /// <summary>
@@ -179,10 +180,13 @@ namespace MongoRepository
         /// </summary>
         /// <param name="entities">The entities of type T.</param>
         /// <param name="cancellationToken"></param>
-        public virtual async Task AddAsync(IEnumerable<TEntity> entities,
-                                           CancellationToken cancellationToken = default(CancellationToken))
+        public virtual async Task<long> AddManyAsync(IEnumerable<TEntity> entities,
+                                                     CancellationToken cancellationToken = default(CancellationToken))
         {
-            await Collection.InsertManyAsync(entities, cancellationToken: cancellationToken);
+            // TODO: Get number of affected records
+            if (entities.Any())
+                await Collection.InsertManyAsync(entities, cancellationToken: cancellationToken);
+            return entities.Count();
         }
 
         /// <summary>
