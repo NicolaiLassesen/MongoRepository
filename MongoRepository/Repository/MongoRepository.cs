@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Options;
-using MongoDB.Bson.Serialization.Serializers;
 using MongoDB.Driver;
 
 // ReSharper disable once CheckNamespace
@@ -25,13 +24,6 @@ namespace MongoRepository
         where TEntity : IEntity<TKey>
         where TKey : IEquatable<TKey>
     {
-        static MongoRepository()
-        {
-            // DeSerialize DateTime as local format (not utc) - the Json representation will still be ISODate
-            if (BsonSerializer.LookupSerializer<DateTime>() == null)
-                BsonSerializer.RegisterSerializer(typeof(DateTime), DateTimeSerializer.LocalInstance);
-        }
-
         /// <summary>
         /// Initializes a new instance of the MongoRepository class.
         /// Uses the Default App/Web.Config connectionstrings to fetch the connectionString and Database name.
@@ -52,6 +44,7 @@ namespace MongoRepository
         /// <param name="password">Password for authenticating user</param>
         public MongoRepository(string connectionString, string username, SecureString password)
         {
+            MongoGlobalSettings.Initialize();
             Collection = Util<TKey>.GetCollectionFromConnectionString<TEntity>(connectionString, username, password);
         }
 
@@ -64,6 +57,7 @@ namespace MongoRepository
         /// <param name="password">Password for authenticating user</param>
         public MongoRepository(string connectionString, string collectionName, string username, SecureString password)
         {
+            MongoGlobalSettings.Initialize();
             Collection = Util<TKey>.GetCollectionFromConnectionString<TEntity>(connectionString,
                                                                                collectionName,
                                                                                username,
@@ -78,6 +72,7 @@ namespace MongoRepository
         /// <param name="password">Password for authenticating user</param>
         public MongoRepository(MongoUrl url, string username, SecureString password)
         {
+            MongoGlobalSettings.Initialize();
             Collection = Util<TKey>.GetCollectionFromUrl<TEntity>(url, username, password);
         }
 
@@ -90,6 +85,7 @@ namespace MongoRepository
         /// <param name="password">Password for authenticating user</param>
         public MongoRepository(MongoUrl url, string collectionName, string username, SecureString password)
         {
+            MongoGlobalSettings.Initialize();
             Collection = Util<TKey>.GetCollectionFromUrl<TEntity>(url, collectionName, username, password);
         }
 
@@ -105,7 +101,8 @@ namespace MongoRepository
         /// <param name="cancellationToken"></param>
         /// <returns>The entity.</returns>
         public virtual async Task<TEntity> GetByIdAsync(TKey id,
-                                                        CancellationToken cancellationToken = default(CancellationToken))
+                                                        CancellationToken cancellationToken =
+                                                            default(CancellationToken))
         {
             var filter = Builders<TEntity>.Filter.Eq(f => f.Id, id);
             return await Collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
@@ -120,7 +117,8 @@ namespace MongoRepository
         /// <returns>The entity.</returns>
         public virtual async Task<TEntity> GetByExpressionAsync<TField>(Expression<Func<TEntity, TField>> field,
                                                                         TField value,
-                                                                      //  expressionco
+
+                                                                        //  expressionco
                                                                         CancellationToken cancellationToken =
                                                                             default(CancellationToken))
         {
@@ -133,6 +131,7 @@ namespace MongoRepository
             TField1 value1,
             Expression<Func<TEntity, TField2>> field2,
             TField2 value2,
+
             //  expressionco
             CancellationToken cancellationToken =
                 default(CancellationToken))
@@ -157,9 +156,12 @@ namespace MongoRepository
         /// Adds the new entities in the repository.
         /// </summary>
         /// <param name="entities">The entities of type T.</param>
-        public void Add(IEnumerable<TEntity> entities)
+        public long AddMany(IEnumerable<TEntity> entities)
         {
-            Collection.InsertMany(entities);
+            // TODO: Get number of affected records
+            if (entities.Any())
+                Collection.InsertMany(entities);
+            return entities.Count();
         }
 
         /// <summary>
@@ -214,7 +216,8 @@ namespace MongoRepository
             foreach (TEntity entity in entities)
             {
                 var filter = Builders<TEntity>.Filter.Eq(f => f.Id, entity.Id);
-                await Collection.ReplaceOneAsync(filter, entity, new UpdateOptions {IsUpsert = true}, cancellationToken);
+                await Collection.ReplaceOneAsync(filter, entity, new UpdateOptions {IsUpsert = true},
+                                                 cancellationToken);
             }
         }
 
@@ -246,20 +249,24 @@ namespace MongoRepository
         /// </summary>
         /// <param name="predicate">The expression.</param>
         /// <param name="cancellationToken"></param>
-        public virtual async Task DeleteAsync(Expression<Func<TEntity, bool>> predicate,
-                                              CancellationToken cancellationToken = default(CancellationToken))
+        public virtual async Task<long> DeleteAsync(Expression<Func<TEntity, bool>> predicate,
+                                                    CancellationToken cancellationToken = default(CancellationToken))
         {
             var filter = Builders<TEntity>.Filter.Where(predicate);
+            long count = await Collection.CountAsync(filter, cancellationToken: cancellationToken);
             await Collection.DeleteManyAsync(filter, cancellationToken);
+            return count;
         }
 
         /// <summary>
         /// Deletes all entities in the repository.
         /// </summary>
         /// <param name="cancellationToken"></param>
-        public virtual async Task DeleteAllAsync(CancellationToken cancellationToken = default(CancellationToken))
+        public virtual async Task<long> DeleteAllAsync(CancellationToken cancellationToken = default(CancellationToken))
         {
+            long count = await Collection.CountAsync(new BsonDocument(), cancellationToken: cancellationToken);
             await Collection.DeleteManyAsync(new BsonDocument(), cancellationToken);
+            return count;
         }
 
         /// <summary>
@@ -411,7 +418,7 @@ namespace MongoRepository
     public static class MongoRepository
     {
         public static void IgnorePropertiesInBson<TType>(
-           params string[] propertyNames)
+            params string[] propertyNames)
         {
             BsonClassMap.RegisterClassMap<TType>(cm =>
             {
@@ -441,9 +448,9 @@ namespace MongoRepository
 
             var childSerializerConfigurable = serializer as IChildSerializerConfigurable;
             return childSerializerConfigurable == null
-                ? serializer
-                : childSerializerConfigurable.WithChildSerializer(
-                    ConfigureSerializer(childSerializerConfigurable.ChildSerializer, representation));
+                       ? serializer
+                       : childSerializerConfigurable.WithChildSerializer(
+                           ConfigureSerializer(childSerializerConfigurable.ChildSerializer, representation));
         }
     }
 }

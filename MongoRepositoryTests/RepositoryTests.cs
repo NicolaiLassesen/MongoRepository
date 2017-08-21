@@ -171,7 +171,7 @@ namespace MongoRepository.Tests
             });
 
             //Insert batch
-            await customerRepo.AddAsync(custlist);
+            await customerRepo.AddManyAsync(custlist);
 
             var count = await customerRepo.CountAsync();
             count.ShouldEqual(7);

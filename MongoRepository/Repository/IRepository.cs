@@ -42,7 +42,7 @@ namespace MongoRepository
         /// Adds the new entities in the repository.
         /// </summary>
         /// <param name="entities">The entities of type T.</param>
-        void Add(IEnumerable<TEntity> entities);
+        long AddMany(IEnumerable<TEntity> entities);
 
         /// <summary>
         /// Adds the new entity in the repository.
@@ -57,7 +57,8 @@ namespace MongoRepository
         /// </summary>
         /// <param name="entities">The entities of type T.</param>
         /// <param name="cancellationToken"></param>
-        Task<long> AddManyAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default(CancellationToken));
+        Task<long> AddManyAsync(IEnumerable<TEntity> entities,
+                                CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Upserts an entity.
@@ -72,7 +73,8 @@ namespace MongoRepository
         /// </summary>
         /// <param name="entities">The entities to update.</param>
         /// <param name="cancellationToken"></param>
-        Task UpdateAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default(CancellationToken));
+        Task UpdateAsync(IEnumerable<TEntity> entities,
+                         CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Deletes an entity from the repository by its id.
@@ -93,14 +95,14 @@ namespace MongoRepository
         /// </summary>
         /// <param name="predicate">The expression.</param>
         /// <param name="cancellationToken"></param>
-        Task DeleteAsync(Expression<Func<TEntity, bool>> predicate,
-                         CancellationToken cancellationToken = default(CancellationToken));
+        Task<long> DeleteAsync(Expression<Func<TEntity, bool>> predicate,
+                               CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Deletes all entities in the repository.
         /// </summary>
         /// <param name="cancellationToken"></param>
-        Task DeleteAllAsync(CancellationToken cancellationToken = default(CancellationToken));
+        Task<long> DeleteAllAsync(CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Counts the total entities in the repository.
