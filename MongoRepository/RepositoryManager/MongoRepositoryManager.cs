@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Security;
 using System.Threading.Tasks;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -31,8 +32,10 @@ namespace MongoRepository
         /// Uses the Default App/Web.Config connectionstrings to fetch the connectionString and Database name.
         /// </summary>
         /// <remarks>Default constructor defaults to "MongoServerSettings" key for connectionstring.</remarks>
-        public MongoRepositoryManager()
-            : this(Util<TKey>.GetDefaultConnectionString())
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
+        public MongoRepositoryManager(string username, SecureString password)
+            : this(Util<TKey>.GetDefaultConnectionString(), username, password)
         {
         }
 
@@ -40,10 +43,12 @@ namespace MongoRepository
         /// Initializes a new instance of the MongoRepositoryManager class.
         /// </summary>
         /// <param name="connectionString">Connectionstring to use for connecting to MongoDB.</param>
-        public MongoRepositoryManager(string connectionString)
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
+        public MongoRepositoryManager(string connectionString, string username, SecureString password)
         {
-            Database = Util<TKey>.GetDatabaseFromConnectionString(connectionString);
-            Collection = Util<TKey>.GetCollectionFromConnectionString<TEntity>(connectionString);
+            Database = Util<TKey>.GetDatabaseFromConnectionString(connectionString, username, password);
+            Collection = Util<TKey>.GetCollectionFromDatabase<TEntity>(Database);
             Name = Collection.CollectionNamespace.CollectionName;
         }
 
@@ -52,10 +57,15 @@ namespace MongoRepository
         /// </summary>
         /// <param name="connectionString">Connectionstring to use for connecting to MongoDB.</param>
         /// <param name="collectionName">The name of the collection to use.</param>
-        public MongoRepositoryManager(string connectionString, string collectionName)
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
+        public MongoRepositoryManager(string connectionString,
+                                      string collectionName,
+                                      string username,
+                                      SecureString password)
         {
-            Database = Util<TKey>.GetDatabaseFromConnectionString(connectionString);
-            Collection = Util<TKey>.GetCollectionFromConnectionString<TEntity>(connectionString, collectionName);
+            Database = Util<TKey>.GetDatabaseFromConnectionString(connectionString, username, password);
+            Collection = Database.GetCollection<TEntity>(collectionName);
             Name = Collection.CollectionNamespace.CollectionName;
         }
 
@@ -308,7 +318,10 @@ namespace MongoRepository
         /// Uses the Default App/Web.Config connectionstrings to fetch the connectionString and Database name.
         /// </summary>
         /// <remarks>Default constructor defaults to "MongoServerSettings" key for connectionstring.</remarks>
-        public MongoRepositoryManager()
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
+        public MongoRepositoryManager(string username, SecureString password)
+            : base(username, password)
         {
         }
 
@@ -316,8 +329,10 @@ namespace MongoRepository
         /// Initializes a new instance of the MongoRepositoryManager class.
         /// </summary>
         /// <param name="connectionString">Connectionstring to use for connecting to MongoDB.</param>
-        public MongoRepositoryManager(string connectionString)
-            : base(connectionString)
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
+        public MongoRepositoryManager(string connectionString, string username, SecureString password)
+            : base(connectionString, username, password)
         {
         }
 
@@ -326,8 +341,13 @@ namespace MongoRepository
         /// </summary>
         /// <param name="connectionString">Connectionstring to use for connecting to MongoDB.</param>
         /// <param name="collectionName">The name of the collection to use.</param>
-        public MongoRepositoryManager(string connectionString, string collectionName)
-            : base(connectionString, collectionName)
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
+        public MongoRepositoryManager(string connectionString,
+                                      string collectionName,
+                                      string username,
+                                      SecureString password)
+            : base(connectionString, collectionName, username, password)
         {
         }
     }

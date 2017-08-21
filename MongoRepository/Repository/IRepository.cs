@@ -57,7 +57,7 @@ namespace MongoRepository
         /// </summary>
         /// <param name="entities">The entities of type T.</param>
         /// <param name="cancellationToken"></param>
-        Task AddAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default(CancellationToken));
+        Task<long> AddManyAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Upserts an entity.

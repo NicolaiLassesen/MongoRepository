@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Configuration;
+using System.Security;
 using MongoDB.Driver;
 
 namespace MongoRepository
@@ -27,20 +28,37 @@ namespace MongoRepository
         /// Creates and returns a MongoDatabase from the specified url.
         /// </summary>
         /// <param name="connectionString">The connectionstring to use to get the database from.</param>
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
         /// <returns>Returns a MongoDatabase from the specified url.</returns>
-        public static IMongoDatabase GetDatabaseFromConnectionString(string connectionString)
+        public static IMongoDatabase GetDatabaseFromConnectionString(string connectionString,
+                                                                     string username,
+                                                                     SecureString password)
         {
-            return GetDatabaseFromUrl(new MongoUrl(connectionString));
+            return GetDatabaseFromUrl(new MongoUrl(connectionString), username, password);
         }
 
         /// <summary>
         /// Creates and returns a MongoDatabase from the specified url.
         /// </summary>
         /// <param name="url">The url to use to get the database from.</param>
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
         /// <returns>Returns a MongoDatabase from the specified url.</returns>
-        public static IMongoDatabase GetDatabaseFromUrl(MongoUrl url)
+        public static IMongoDatabase GetDatabaseFromUrl(MongoUrl url, string username, SecureString password)
         {
-            var client = new MongoClient(url);
+            if (url == null) throw new ArgumentNullException(nameof(url));
+            if (username == null) throw new ArgumentNullException(nameof(username));
+            if (password == null) throw new ArgumentNullException(nameof(password));
+            var settings = MongoClientSettings.FromUrl(url);
+            string database = url.DatabaseName;
+            if (string.IsNullOrEmpty(database))
+                throw new ArgumentException("The mongo url must contain the data base name");
+            settings.Credentials = new[]
+            {
+                MongoCredential.CreateCredential(database, username, password)
+            };
+            var client = new MongoClient(settings);
             return client.GetDatabase(url.DatabaseName); // WriteConcern defaulted to Acknowledged
         }
 
@@ -49,11 +67,24 @@ namespace MongoRepository
         /// </summary>
         /// <typeparam name="TEntity">The type to get the collection of.</typeparam>
         /// <param name="connectionString">The connectionstring to use to get the collection from.</param>
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
         /// <returns>Returns a MongoCollection from the specified type and connectionstring.</returns>
-        public static IMongoCollection<TEntity> GetCollectionFromConnectionString<TEntity>(string connectionString)
+        public static IMongoCollection<TEntity> GetCollectionFromConnectionString<TEntity>(string connectionString,
+                                                                                           string username,
+                                                                                           SecureString password)
             where TEntity : IEntity<TKey>
         {
-            return GetCollectionFromConnectionString<TEntity>(connectionString, GetCollectionName<TEntity>());
+            return GetCollectionFromConnectionString<TEntity>(connectionString,
+                                                              GetCollectionName<TEntity>(),
+                                                              username,
+                                                              password);
+        }
+
+        public static IMongoCollection<TEntity> GetCollectionFromDatabase<TEntity>(IMongoDatabase database)
+            where TEntity : IEntity<TKey>
+        {
+            return database.GetCollection<TEntity>(GetCollectionName<TEntity>());
         }
 
         /// <summary>
@@ -62,12 +93,16 @@ namespace MongoRepository
         /// <typeparam name="TEntity">The type to get the collection of.</typeparam>
         /// <param name="connectionString">The connectionstring to use to get the collection from.</param>
         /// <param name="collectionName">The name of the collection to use.</param>
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
         /// <returns>Returns a MongoCollection from the specified type and connectionstring.</returns>
         public static IMongoCollection<TEntity> GetCollectionFromConnectionString<TEntity>(string connectionString,
-                                                                                           string collectionName)
+                                                                                           string collectionName,
+                                                                                           string username,
+                                                                                           SecureString password)
             where TEntity : IEntity<TKey>
         {
-            return GetDatabaseFromUrl(new MongoUrl(connectionString))
+            return GetDatabaseFromUrl(new MongoUrl(connectionString), username, password)
                 .GetCollection<TEntity>(collectionName);
         }
 
@@ -76,11 +111,15 @@ namespace MongoRepository
         /// </summary>
         /// <typeparam name="TEntity">The type to get the collection of.</typeparam>
         /// <param name="url">The url to use to get the collection from.</param>
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
         /// <returns>Returns a MongoCollection from the specified type and url.</returns>
-        public static IMongoCollection<TEntity> GetCollectionFromUrl<TEntity>(MongoUrl url)
+        public static IMongoCollection<TEntity> GetCollectionFromUrl<TEntity>(MongoUrl url,
+                                                                              string username,
+                                                                              SecureString password)
             where TEntity : IEntity<TKey>
         {
-            return GetCollectionFromUrl<TEntity>(url, GetCollectionName<TEntity>());
+            return GetCollectionFromUrl<TEntity>(url, GetCollectionName<TEntity>(), username, password);
         }
 
         /// <summary>
@@ -89,11 +128,16 @@ namespace MongoRepository
         /// <typeparam name="TEntity">The type to get the collection of.</typeparam>
         /// <param name="url">The url to use to get the collection from.</param>
         /// <param name="collectionName">The name of the collection to use.</param>
+        /// <param name="username">Username with access to the database</param>
+        /// <param name="password">Password for authenticating user</param>
         /// <returns>Returns a MongoCollection from the specified type and url.</returns>
-        public static IMongoCollection<TEntity> GetCollectionFromUrl<TEntity>(MongoUrl url, string collectionName)
+        public static IMongoCollection<TEntity> GetCollectionFromUrl<TEntity>(MongoUrl url,
+                                                                              string collectionName,
+                                                                              string username,
+                                                                              SecureString password)
             where TEntity : IEntity<TKey>
         {
-            return GetDatabaseFromUrl(url)
+            return GetDatabaseFromUrl(url, username, password)
                 .GetCollection<TEntity>(collectionName);
         }
 
