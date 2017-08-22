@@ -115,18 +115,16 @@ namespace MongoRepository
         /// <param name="value"></param>
         /// <param name="cancellationToken"></param>
         /// <returns>The entity.</returns>
-        public virtual async Task<TEntity> GetByExpressionAsync<TField>(Expression<Func<TEntity, TField>> field,
+        public virtual async Task<ICollection<TEntity>> GetByExpressionAsync<TField>(Expression<Func<TEntity, TField>> field,
                                                                         TField value,
-
-                                                                        //  expressionco
                                                                         CancellationToken cancellationToken =
                                                                             default(CancellationToken))
         {
             var filter = Builders<TEntity>.Filter.Eq(field, value);
-            return await Collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
+            return await Collection.Find(filter).ToListAsync(cancellationToken);
         }
 
-        public virtual async Task<TEntity> GetByExpressionAsync<TField1, TField2>(
+        public virtual async Task<ICollection<TEntity>> GetByExpressionAsync<TField1, TField2>(
             Expression<Func<TEntity, TField1>> field1,
             TField1 value1,
             Expression<Func<TEntity, TField2>> field2,
@@ -138,7 +136,7 @@ namespace MongoRepository
         {
             var filter = Builders<TEntity>.Filter.And(Builders<TEntity>.Filter.Eq(field1, value1),
                                                       Builders<TEntity>.Filter.Eq(field2, value2));
-            return await Collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
+            return await Collection.Find(filter).ToListAsync(cancellationToken);
         }
 
         /// <summary>

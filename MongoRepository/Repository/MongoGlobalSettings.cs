@@ -7,7 +7,7 @@ namespace MongoRepository
 {
     public sealed class MongoGlobalSettings
     {
-        private static List<Type> _enums;
+        private static readonly List<Type> _enums;
         private static MongoGlobalSettings _instance;
 
         static MongoGlobalSettings()
@@ -23,7 +23,7 @@ namespace MongoRepository
             {
                 var serializerType = typeof(EnumSerializer<>);
                 var constructedType = serializerType.MakeGenericType(enumType);
-                var instance = Activator.CreateInstance(constructedType) as IBsonSerializer;
+                var instance = Activator.CreateInstance(constructedType) as IBsonSerializer; // Should have BsonType.String as arg
                 BsonSerializer.RegisterSerializer(enumType, instance);
             }
         }
